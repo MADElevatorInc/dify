@@ -56,10 +56,9 @@ class GoogleRawUserInfo(TypedDict):
 
 
 class AzureRawUserInfo(TypedDict):
-    id: str
-    displayName: NotRequired[str | None]
-    mail: NotRequired[str | None]
-    userPrincipalName: NotRequired[str | None]
+    sub: str
+    name: NotRequired[str | None]
+    email: NotRequired[str | None]
 
 
 ACCESS_TOKEN_RESPONSE_ADAPTER = TypeAdapter(AccessTokenResponse)
@@ -384,9 +383,8 @@ class AzureOAuth(OAuth):
     @override
     def _transform_user_info(self, raw_info: JsonObject) -> OAuthUserInfo:
         payload = AZURE_RAW_USER_INFO_ADAPTER.validate_python(raw_info)
-        # Guest users have no mailbox, so `mail` is absent and the UPN is the only usable address.
-        email = payload.get("mail") or ""
-        if not email:
-            user_principal_name = payload.get("userPrincipalName") or ""
-            email = user_principal_name if "@" in user_principal_name else ""
-        return OAuthUserInfo(id=str(payload["id"]), name=str(payload.get("displayName") or ""), email=email)
+        return OAuthUserInfo(
+            id=str(payload["sub"]),
+            name=str(payload.get("name") or ""),
+            email=str(payload.get("email") or ""),
+        )

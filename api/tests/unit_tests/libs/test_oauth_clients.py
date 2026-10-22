@@ -461,11 +461,8 @@ class TestAzureOAuth(BaseOAuthTest):
     @pytest.mark.parametrize(
         ("user_data", "expected_email"),
         [
-            ({"id": "oid-1", "displayName": "Test User", "mail": "test@example.com"}, "test@example.com"),
-            # Guest users have no mailbox; the UPN is the only usable address.
-            ({"id": "oid-1", "displayName": "Guest", "userPrincipalName": "guest@contoso.com"}, "guest@contoso.com"),
-            # No mail and a UPN without '@' (non-email UPN) leaves no usable address.
-            ({"id": "oid-1", "userPrincipalName": "nonemail-upn"}, ""),
+            ({"sub": "oid-1", "name": "Test User", "email": "test@example.com"}, "test@example.com"),
+            ({"sub": "oid-2", "name": "Guest"}, ""),
         ],
     )
     @patch("libs.oauth._http_client.get", autospec=True)
@@ -476,8 +473,8 @@ class TestAzureOAuth(BaseOAuthTest):
 
         user_info = oauth.get_user_info("test_token")
 
-        assert user_info.id == user_data["id"]
-        assert user_info.name == user_data.get("displayName", "")
+        assert user_info.id == user_data["sub"]
+        assert user_info.name == user_data.get("name", "")
         assert user_info.email == expected_email
 
         mock_get.assert_called_once_with(oauth._USER_INFO_URL, headers={"Authorization": "Bearer test_token"})

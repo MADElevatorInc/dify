@@ -62,8 +62,12 @@ class OAuthErrorResponse(ResponseModel):
     error: str = Field(description="OAuth error message")
 
 
+class OAuthProvidersResponse(ResponseModel):
+    azure: bool = Field(description="Whether Azure OAuth is configured for sign-in")
+
+
 register_schema_models(console_ns, OAuthLoginQuery, OAuthCallbackQuery)
-register_response_schema_models(console_ns, RedirectResponse, OAuthErrorResponse)
+register_response_schema_models(console_ns, RedirectResponse, OAuthErrorResponse, OAuthProvidersResponse)
 
 
 def _validated_timezone(value: str | None) -> str | None:
@@ -138,6 +142,18 @@ def _url_origin(url: str) -> tuple[str, str, int] | None:
 def _signin_redirect(message: str, **params: str) -> Response:
     query = urllib.parse.urlencode({"message": message, **params})
     return redirect(f"{dify_config.CONSOLE_WEB_URL}/signin?{query}")
+
+
+@console_ns.route("/oauth/providers")
+class OAuthProviders(Resource):
+    @console_ns.doc("get_oauth_providers")
+    @console_ns.doc(description="Get configured OAuth providers available for sign-in")
+    @console_ns.response(200, "Success", console_ns.models[OAuthProvidersResponse.__name__])
+    def get(self):
+        return dump_response(
+            OAuthProvidersResponse,
+            {"azure": bool(dify_config.AZURE_CLIENT_ID and dify_config.AZURE_CLIENT_SECRET)},
+        )
 
 
 @console_ns.route("/oauth/login/<provider>")
