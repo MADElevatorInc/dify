@@ -35,6 +35,10 @@ export default function SocialAuth() {
         <span aria-hidden="true" className={cn(style.googleIcon, 'size-5')} />
         <span className="truncate leading-normal">{t(($) => $.withGoogle, { ns: 'login' })}</span>
       </a>
+      <a className={cn(buttonVariants(), 'w-full')} href={getOAuthLink('/oauth/login/azure')}>
+        <span aria-hidden="true" className={cn(style.azureIcon, 'size-5')} />
+        <span className="truncate leading-normal">{t(($) => $.withAzure, { ns: 'login' })}</span>
+      </a>
     </>
   )
 }

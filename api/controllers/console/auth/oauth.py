@@ -144,7 +144,7 @@ def _signin_redirect(message: str, **params: str) -> Response:
 class OAuthLogin(Resource):
     @console_ns.doc("oauth_login")
     @console_ns.doc(description="Initiate OAuth login process")
-    @console_ns.doc(params={"provider": "OAuth provider name (github/google)"})
+    @console_ns.doc(params={"provider": "OAuth provider name (github/google/azure)"})
     @console_ns.doc(params=query_params_from_model(OAuthLoginQuery))
     @console_ns.response(302, "Redirect to OAuth authorization URL", console_ns.models[RedirectResponse.__name__])
     @console_ns.response(400, "Invalid provider", console_ns.models[OAuthErrorResponse.__name__])
@@ -171,7 +171,7 @@ class OAuthLogin(Resource):
 class OAuthCallback(Resource):
     @console_ns.doc("oauth_callback")
     @console_ns.doc(description="Handle OAuth callback and complete login process")
-    @console_ns.doc(params={"provider": "OAuth provider name (github/google)"})
+    @console_ns.doc(params={"provider": "OAuth provider name (github/google/azure)"})
     @console_ns.doc(params=query_params_from_model(OAuthCallbackQuery))
     @console_ns.response(302, "Redirect to console with access token", console_ns.models[RedirectResponse.__name__])
     @console_ns.response(400, "OAuth process failed", console_ns.models[OAuthErrorResponse.__name__])

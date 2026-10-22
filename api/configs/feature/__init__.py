@@ -1064,6 +1064,21 @@ class AuthConfig(BaseSettings):
         default=None,
     )
 
+    AZURE_CLIENT_ID: str | None = Field(
+        description="Microsoft Entra ID (Azure AD) OAuth client ID",
+        default=None,
+    )
+
+    AZURE_CLIENT_SECRET: str | None = Field(
+        description="Microsoft Entra ID (Azure AD) OAuth client secret",
+        default=None,
+    )
+
+    AZURE_TENANT_ID: str = Field(
+        description="Microsoft Entra ID (Azure AD) tenant ID, or 'common' to allow any organization",
+        default="common",
+    )
+
     ACCESS_TOKEN_EXPIRE_MINUTES: PositiveInt = Field(
         description="Expiration time for access tokens in minutes",
         default=60,
@@ -1659,8 +1674,9 @@ class LoginConfig(BaseSettings):
         default=False,
     )
     ALLOW_CREATE_WORKSPACE: bool = Field(
-        description="whether to enable create workspace",
-        default=False,
+        description="whether to enable create workspace (enabled by default in this fork to allow "
+        "multiple workspaces, matching the enterprise plan)",
+        default=True,
     )
 
 
@@ -1782,4 +1798,18 @@ class FeatureConfig(
     WorkflowLogConfig,
     WorkflowVariableTruncationConfig,
 ):
-    pass
+    @model_validator(mode="after")
+    def _enable_social_oauth_login_when_provider_configured(self) -> "FeatureConfig":
+        # Operators who configure provider credentials want that provider's sign-in button;
+        # enable social login unless ENABLE_SOCIAL_OAUTH_LOGIN was set explicitly.
+        providers_configured = any(
+            client_id and client_secret
+            for client_id, client_secret in (
+                (self.GITHUB_CLIENT_ID, self.GITHUB_CLIENT_SECRET),
+                (self.GOOGLE_CLIENT_ID, self.GOOGLE_CLIENT_SECRET),
+                (self.AZURE_CLIENT_ID, self.AZURE_CLIENT_SECRET),
+            )
+        )
+        if providers_configured and "ENABLE_SOCIAL_OAUTH_LOGIN" not in self.model_fields_set:
+            self.ENABLE_SOCIAL_OAUTH_LOGIN = True
+        return self

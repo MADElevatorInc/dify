@@ -50,6 +50,14 @@ describe('SocialAuth', () => {
         'href',
         expect.stringContaining('language=zh-Hans'),
       )
+      expect(screen.getByRole('link', { name: 'login.withAzure' })).toHaveAttribute(
+        'href',
+        expect.stringContaining('timezone=Asia%2FShanghai'),
+      )
+      expect(screen.getByRole('link', { name: 'login.withAzure' })).toHaveAttribute(
+        'href',
+        expect.stringContaining('language=zh-Hans'),
+      )
     })
 
     it('should preserve invite token when adding timezone', () => {

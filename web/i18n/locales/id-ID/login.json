@@ -97,6 +97,7 @@
   "webapp.disabled": "Autentikasi aplikasi web dinonaktifkan. Silakan hubungi admin sistem untuk mengaktifkannya. Anda dapat mencoba menggunakan aplikasi secara langsung.",
   "webapp.login": "Login",
   "welcome": "👋 Selamat datang di Dify, silakan login untuk melanjutkan.",
+  "withAzure": "Lanjutkan dengan Azure",
   "withGitHub": "Lanjutkan dengan GitHub",
   "withGoogle": "Lanjutkan dengan Google",
   "withSSO": "Lanjutkan dengan SSO"

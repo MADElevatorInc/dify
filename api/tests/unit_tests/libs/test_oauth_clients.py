@@ -4,7 +4,7 @@ from unittest.mock import MagicMock, patch
 import httpx
 import pytest
 
-from libs.oauth import GitHubOAuth, GoogleOAuth, OAuthUserInfo, decode_oauth_state
+from libs.oauth import AzureOAuth, GitHubOAuth, GoogleOAuth, OAuthUserInfo, decode_oauth_state
 
 
 class BaseOAuthTest:
@@ -384,3 +384,100 @@ class TestOAuthUserInfo:
         assert user_info.id == user_data["id"]
         assert user_info.name == user_data["name"]
         assert user_info.email == user_data["email"]
+
+
+class TestAzureOAuth(BaseOAuthTest):
+    @pytest.fixture
+    def oauth(self, oauth_config: dict[str, str]) -> AzureOAuth:
+        return AzureOAuth(
+            oauth_config["client_id"], oauth_config["client_secret"], oauth_config["redirect_uri"], "test-tenant"
+        )
+
+    def test_should_default_to_common_tenant(self, oauth_config: dict[str, str]) -> None:
+        oauth = AzureOAuth(oauth_config["client_id"], oauth_config["client_secret"], oauth_config["redirect_uri"])
+
+        url = oauth.get_authorization_url()
+        parsed, _ = self.parse_auth_url(url)
+
+        assert parsed.path == "/common/oauth2/v2.0/authorize"
+
+    def test_should_generate_authorization_url_correctly(self, oauth: AzureOAuth, oauth_config: dict[str, str]) -> None:
+        url = oauth.get_authorization_url(
+            invite_token="test_invite_token", timezone="Asia/Shanghai", language="zh-Hans"
+        )
+        parsed, params = self.parse_auth_url(url)
+
+        assert parsed.scheme == "https"
+        assert parsed.netloc == "login.microsoftonline.com"
+        assert parsed.path == "/test-tenant/oauth2/v2.0/authorize"
+        assert params["client_id"][0] == oauth_config["client_id"]
+        assert params["redirect_uri"][0] == oauth_config["redirect_uri"]
+        assert params["response_type"][0] == "code"
+        assert params["scope"][0] == "openid profile email"
+        assert decode_oauth_state(params["state"][0]) == {
+            "invite_token": "test_invite_token",
+            "timezone": "Asia/Shanghai",
+            "language": "zh-Hans",
+        }
+
+    @pytest.mark.parametrize(
+        ("response_data", "expected_token", "should_raise"),
+        [
+            ({"access_token": "test_token"}, "test_token", False),
+            ({"error": "invalid_grant"}, None, True),
+            ({}, None, True),
+        ],
+    )
+    @patch("libs.oauth._http_client.post", autospec=True)
+    def test_should_retrieve_access_token(
+        self,
+        mock_post: MagicMock,
+        oauth: AzureOAuth,
+        oauth_config: dict[str, str],
+        response_data: dict[str, str],
+        expected_token: str | None,
+        should_raise: bool,
+    ) -> None:
+        mock_post.return_value = httpx.Response(200, json=response_data)
+
+        if should_raise:
+            with pytest.raises(ValueError, match="Error in Azure OAuth"):
+                oauth.get_access_token("test_code")
+        else:
+            assert oauth.get_access_token("test_code") == expected_token
+
+        mock_post.assert_called_once_with(
+            f"{oauth._authority}/token",
+            data={
+                "client_id": oauth_config["client_id"],
+                "client_secret": oauth_config["client_secret"],
+                "code": "test_code",
+                "grant_type": "authorization_code",
+                "redirect_uri": oauth_config["redirect_uri"],
+            },
+            headers={"Accept": "application/json"},
+        )
+
+    @pytest.mark.parametrize(
+        ("user_data", "expected_email"),
+        [
+            ({"id": "oid-1", "displayName": "Test User", "mail": "test@example.com"}, "test@example.com"),
+            # Guest users have no mailbox; the UPN is the only usable address.
+            ({"id": "oid-1", "displayName": "Guest", "userPrincipalName": "guest@contoso.com"}, "guest@contoso.com"),
+            # No mail and a UPN without '@' (non-email UPN) leaves no usable address.
+            ({"id": "oid-1", "userPrincipalName": "nonemail-upn"}, ""),
+        ],
+    )
+    @patch("libs.oauth._http_client.get", autospec=True)
+    def test_should_retrieve_user_info_correctly(
+        self, mock_get: MagicMock, oauth: AzureOAuth, user_data: dict[str, object], expected_email: str
+    ) -> None:
+        mock_get.return_value = httpx.Response(200, json=user_data, request=httpx.Request("GET", oauth._USER_INFO_URL))
+
+        user_info = oauth.get_user_info("test_token")
+
+        assert user_info.id == user_data["id"]
+        assert user_info.name == user_data.get("displayName", "")
+        assert user_info.email == expected_email
+
+        mock_get.assert_called_once_with(oauth._USER_INFO_URL, headers={"Authorization": "Bearer test_token"})

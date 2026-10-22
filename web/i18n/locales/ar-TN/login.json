@@ -97,6 +97,7 @@
   "webapp.disabled": "مصادقة Webapp معطلة. يرجى الاتصال بمسؤول النظام لتمكينها. يمكنك محاولة استخدام التطبيق مباشرة.",
   "webapp.login": "تسجيل الدخول",
   "welcome": "👋 مرحبًا! يرجى تسجيل الدخول للبدء.",
+  "withAzure": "المتابعة مع Azure",
   "withGitHub": "المتابعة مع GitHub",
   "withGoogle": "المتابعة مع Google",
   "withSSO": "المتابعة مع SSO"

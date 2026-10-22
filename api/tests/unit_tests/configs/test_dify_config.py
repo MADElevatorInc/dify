@@ -409,3 +409,23 @@ def test_celery_broker_url_with_special_chars_password(
     assert redis_config["userid"] == expected_username  # kombu uses 'userid' not 'username'
     assert redis_config["password"] == expected_password
     assert redis_config["virtual_host"] == expected_db  # kombu uses 'virtual_host' not 'db'
+
+
+def test_social_oauth_login_auto_enables_when_azure_provider_configured() -> None:
+    config = _make_config(AZURE_CLIENT_ID="client-id", AZURE_CLIENT_SECRET="client-secret")
+
+    assert config.ENABLE_SOCIAL_OAUTH_LOGIN is True
+
+
+def test_social_oauth_login_explicit_disable_wins_over_configured_provider() -> None:
+    config = _make_config(
+        AZURE_CLIENT_ID="client-id",
+        AZURE_CLIENT_SECRET="client-secret",
+        ENABLE_SOCIAL_OAUTH_LOGIN=False,
+    )
+
+    assert config.ENABLE_SOCIAL_OAUTH_LOGIN is False
+
+
+def test_social_oauth_login_stays_disabled_with_incomplete_provider_credentials() -> None:
+    assert _make_config(AZURE_CLIENT_ID="client-id").ENABLE_SOCIAL_OAUTH_LOGIN is False

@@ -97,6 +97,7 @@
   "webapp.disabled": "Avtentikacija v spletni aplikaciji je onemogočena. Prosimo, kontaktirajte skrbnika sistema, da jo omogoči. Poskusite lahko neposredno uporabljati aplikacijo.",
   "webapp.login": "Prijava",
   "welcome": "Dobrodošli v Dify, prosimo, prijavite se za nadaljevanje.",
+  "withAzure": "Nadaljujte z Azure",
   "withGitHub": "Nadaljujte z GitHub",
   "withGoogle": "Nadaljujte z Google",
   "withSSO": "Nadaljujte z enotno prijavo"

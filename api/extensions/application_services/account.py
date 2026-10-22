@@ -11,7 +11,7 @@ from enums import DeploymentEdition
 from extensions.ext_redis import RedisClientWrapper
 from libs.datetime_utils import naive_utc_now, utc_now
 from libs.helper import RateLimiter
-from libs.oauth import GitHubOAuth, GoogleOAuth
+from libs.oauth import AzureOAuth, GitHubOAuth, GoogleOAuth
 from libs.oauth_bearer import invalidate_oauth_token_cache
 from repositories.account.repository import SQLAlchemyAccountRepository
 from repositories.account_activation_repository import SQLAlchemyAccountActivationRepository
@@ -151,6 +151,16 @@ def _build_account_oauth_service(
                 client_id=dify_config.GOOGLE_CLIENT_ID,
                 client_secret=dify_config.GOOGLE_CLIENT_SECRET,
                 redirect_uri=dify_config.CONSOLE_API_URL + "/console/api/oauth/authorize/google",
+            ),
+        )
+    if dify_config.AZURE_CLIENT_ID and dify_config.AZURE_CLIENT_SECRET:
+        providers["azure"] = DifyOAuthProviderGateway(
+            provider_name="azure",
+            client=AzureOAuth(
+                client_id=dify_config.AZURE_CLIENT_ID,
+                client_secret=dify_config.AZURE_CLIENT_SECRET,
+                redirect_uri=dify_config.CONSOLE_API_URL + "/console/api/oauth/authorize/azure",
+                tenant_id=dify_config.AZURE_TENANT_ID,
             ),
         )
 
