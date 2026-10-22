@@ -8,7 +8,15 @@ import { getPurifyHref } from '@/utils'
 import { getBrowserTimezone } from '@/utils/timezone'
 import style from '../page.module.css'
 
-export default function SocialAuth({ azureEnabled }: { azureEnabled: boolean }) {
+export default function SocialAuth({
+  githubEnabled,
+  googleEnabled,
+  azureEnabled,
+}: {
+  githubEnabled: boolean
+  googleEnabled: boolean
+  azureEnabled: boolean
+}) {
   const { t } = useTranslation(['login'])
   const searchParams = useSearchParams()
   const locale = useLocale()
@@ -27,14 +35,18 @@ export default function SocialAuth({ azureEnabled }: { azureEnabled: boolean }) 
   }
   return (
     <>
-      <a className={cn(buttonVariants(), 'w-full')} href={getOAuthLink('/oauth/login/github')}>
-        <span aria-hidden="true" className={cn(style.githubIcon, 'size-5')} />
-        <span className="truncate leading-normal">{t(($) => $.withGitHub, { ns: 'login' })}</span>
-      </a>
-      <a className={cn(buttonVariants(), 'w-full')} href={getOAuthLink('/oauth/login/google')}>
-        <span aria-hidden="true" className={cn(style.googleIcon, 'size-5')} />
-        <span className="truncate leading-normal">{t(($) => $.withGoogle, { ns: 'login' })}</span>
-      </a>
+      {githubEnabled && (
+        <a className={cn(buttonVariants(), 'w-full')} href={getOAuthLink('/oauth/login/github')}>
+          <span aria-hidden="true" className={cn(style.githubIcon, 'size-5')} />
+          <span className="truncate leading-normal">{t(($) => $.withGitHub, { ns: 'login' })}</span>
+        </a>
+      )}
+      {googleEnabled && (
+        <a className={cn(buttonVariants(), 'w-full')} href={getOAuthLink('/oauth/login/google')}>
+          <span aria-hidden="true" className={cn(style.googleIcon, 'size-5')} />
+          <span className="truncate leading-normal">{t(($) => $.withGoogle, { ns: 'login' })}</span>
+        </a>
+      )}
       {azureEnabled && (
         <a className={cn(buttonVariants(), 'w-full')} href={getOAuthLink('/oauth/login/azure')}>
           <span aria-hidden="true" className={cn(style.azureIcon, 'size-5')} />

@@ -212,7 +212,13 @@ function NormalForm() {
         )}
         <div className="relative">
           <div className="mt-6 flex flex-col gap-3">
-            {hasSocialLogin && <SocialAuth azureEnabled={oauthProviders?.azure ?? false} />}
+            {hasSocialLogin && (
+              <SocialAuth
+                githubEnabled={oauthProviders?.github ?? false}
+                googleEnabled={oauthProviders?.google ?? false}
+                azureEnabled={oauthProviders?.azure ?? false}
+              />
+            )}
             {hasSsoLogin && (
               <div className="w-full">
                 <SSOAuth protocol={ssoProtocol} />

@@ -98,7 +98,11 @@ describe('NormalForm', () => {
     'shows Azure sign-in only when Azure is configured (%s)',
     (azureEnabled) => {
       const queryClient = createConsoleQueryClient()
-      queryClient.setQueryData(consoleQuery.oauth.providers.get.queryKey(), { azure: azureEnabled })
+      queryClient.setQueryData(consoleQuery.oauth.providers.get.queryKey(), {
+        azure: azureEnabled,
+        github: false,
+        google: false,
+      })
       mockQueryResults(nonInviteQueryResult, nonInviteQueryResult)
 
       render(<NormalForm />, {
@@ -109,6 +113,8 @@ describe('NormalForm', () => {
       const azureLink = screen.queryByRole('link', { name: 'login.withAzure' })
       if (azureEnabled) expect(azureLink).toBeInTheDocument()
       else expect(azureLink).not.toBeInTheDocument()
+      expect(screen.queryByRole('link', { name: 'login.withGitHub' })).not.toBeInTheDocument()
+      expect(screen.queryByRole('link', { name: 'login.withGoogle' })).not.toBeInTheDocument()
     },
   )
 

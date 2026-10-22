@@ -64,6 +64,8 @@ class OAuthErrorResponse(ResponseModel):
 
 class OAuthProvidersResponse(ResponseModel):
     azure: bool = Field(description="Whether Azure OAuth is configured for sign-in")
+    github: bool = Field(description="Whether GitHub OAuth is configured for sign-in")
+    google: bool = Field(description="Whether Google OAuth is configured for sign-in")
 
 
 register_schema_models(console_ns, OAuthLoginQuery, OAuthCallbackQuery)
@@ -152,7 +154,11 @@ class OAuthProviders(Resource):
     def get(self):
         return dump_response(
             OAuthProvidersResponse,
-            {"azure": bool(dify_config.AZURE_CLIENT_ID and dify_config.AZURE_CLIENT_SECRET)},
+            {
+                "azure": bool(dify_config.AZURE_CLIENT_ID and dify_config.AZURE_CLIENT_SECRET),
+                "github": bool(dify_config.GITHUB_CLIENT_ID and dify_config.GITHUB_CLIENT_SECRET),
+                "google": bool(dify_config.GOOGLE_CLIENT_ID and dify_config.GOOGLE_CLIENT_SECRET),
+            },
         )
 
 
