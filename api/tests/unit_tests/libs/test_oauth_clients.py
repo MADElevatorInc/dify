@@ -462,7 +462,6 @@ class TestAzureOAuth(BaseOAuthTest):
         ("user_data", "expected_email"),
         [
             ({"sub": "oid-1", "name": "Test User", "email": "test@example.com"}, "test@example.com"),
-            ({"sub": "oid-2", "name": "Guest"}, ""),
         ],
     )
     @patch("libs.oauth._http_client.get", autospec=True)
@@ -478,3 +477,23 @@ class TestAzureOAuth(BaseOAuthTest):
         assert user_info.email == expected_email
 
         mock_get.assert_called_once_with(oauth._USER_INFO_URL, headers={"Authorization": "Bearer test_token"})
+
+    @pytest.mark.parametrize("user_data", [{"sub": "oid-2", "name": "Guest"}, {"sub": "oid-3", "email": "  "}])
+    @patch("libs.oauth._http_client.get", autospec=True)
+    def test_should_reject_missing_or_blank_email_claim(
+        self, mock_get: MagicMock, oauth: AzureOAuth, user_data: dict[str, object]
+    ) -> None:
+        mock_get.return_value = httpx.Response(200, json=user_data, request=httpx.Request("GET", oauth._USER_INFO_URL))
+
+        with pytest.raises(ValueError, match="no email"):
+            oauth.get_user_info("test_token")
+
+    def test_should_escape_path_separators_in_tenant_id(self, oauth_config: dict[str, str]) -> None:
+        oauth = AzureOAuth(
+            oauth_config["client_id"], oauth_config["client_secret"], oauth_config["redirect_uri"], "a/b"
+        )
+
+        url = oauth.get_authorization_url()
+        parsed, _ = self.parse_auth_url(url)
+
+        assert parsed.path == "/a%2Fb/oauth2/v2.0/authorize"
