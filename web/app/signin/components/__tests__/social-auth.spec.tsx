@@ -32,7 +32,7 @@ describe('SocialAuth', () => {
 
   describe('OAuth params', () => {
     it('should include browser timezone and locale in oauth links', () => {
-      render(<SocialAuth />)
+      render(<SocialAuth azureEnabled />)
 
       expect(screen.getByRole('link', { name: 'login.withGitHub' })).toHaveAttribute(
         'href',
@@ -65,7 +65,7 @@ describe('SocialAuth', () => {
         new URLSearchParams('invite_token=invite-123') as ReturnType<typeof useSearchParams>,
       )
 
-      render(<SocialAuth />)
+      render(<SocialAuth azureEnabled />)
 
       const githubLink = screen.getByRole('link', { name: 'login.withGitHub' })
       expect(githubLink).toHaveAttribute('href', expect.stringContaining('invite_token=invite-123'))
@@ -81,7 +81,7 @@ describe('SocialAuth', () => {
     it('should omit timezone when browser timezone is unavailable', () => {
       mockGetBrowserTimezone.mockReturnValue(undefined)
 
-      render(<SocialAuth />)
+      render(<SocialAuth azureEnabled />)
 
       expect(
         screen.getByRole('link', { name: 'login.withGitHub' }).getAttribute('href'),

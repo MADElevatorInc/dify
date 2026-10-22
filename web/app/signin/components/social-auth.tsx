@@ -8,7 +8,7 @@ import { getPurifyHref } from '@/utils'
 import { getBrowserTimezone } from '@/utils/timezone'
 import style from '../page.module.css'
 
-export default function SocialAuth() {
+export default function SocialAuth({ azureEnabled }: { azureEnabled: boolean }) {
   const { t } = useTranslation(['login'])
   const searchParams = useSearchParams()
   const locale = useLocale()
@@ -35,10 +35,12 @@ export default function SocialAuth() {
         <span aria-hidden="true" className={cn(style.googleIcon, 'size-5')} />
         <span className="truncate leading-normal">{t(($) => $.withGoogle, { ns: 'login' })}</span>
       </a>
-      <a className={cn(buttonVariants(), 'w-full')} href={getOAuthLink('/oauth/login/azure')}>
-        <span aria-hidden="true" className={cn(style.azureIcon, 'size-5')} />
-        <span className="truncate leading-normal">{t(($) => $.withAzure, { ns: 'login' })}</span>
-      </a>
+      {azureEnabled && (
+        <a className={cn(buttonVariants(), 'w-full')} href={getOAuthLink('/oauth/login/azure')}>
+          <span aria-hidden="true" className={cn(style.azureIcon, 'size-5')} />
+          <span className="truncate leading-normal">{t(($) => $.withAzure, { ns: 'login' })}</span>
+        </a>
+      )}
     </>
   )
 }

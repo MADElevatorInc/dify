@@ -122,6 +122,13 @@ export const zOAuthProviderTokenResponse = z.object({
   token_type: z.string(),
 })
 
+/**
+ * OAuthProvidersResponse
+ */
+export const zOAuthProvidersResponse = z.object({
+  azure: z.boolean(),
+})
+
 export const zGetOauthDataSourceBindingByProviderPath = z.object({
   provider: z.string(),
 })
@@ -210,3 +217,8 @@ export const zPostOauthProviderTokenBody = zOAuthTokenRequest
  * Success
  */
 export const zPostOauthProviderTokenResponse = zOAuthProviderTokenResponse
+
+/**
+ * Success
+ */
+export const zGetOauthProvidersResponse = zOAuthProvidersResponse

@@ -4,6 +4,7 @@ import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
 import { useRouter, useSearchParams } from '@/next/navigation'
+import { consoleQuery } from '@/service/console'
 import { createHttpError } from '@/service/http-error'
 import { seedAccountProfileQuery } from '@/test/console/account-profile'
 import { createConsoleQueryClient, renderWithConsoleQuery } from '@/test/console/query-data'
@@ -58,7 +59,7 @@ const mockQueryResults = (profile: QueryFixture, invite: QueryFixture) => {
   inviteResult = invite
 }
 const render = (ui: ReactElement, options: Parameters<typeof renderWithConsoleQuery>[1] = {}) => {
-  const queryClient = createConsoleQueryClient()
+  const queryClient = options.queryClient ?? createConsoleQueryClient()
   if (profileResult.data && 'profile' in profileResult.data) {
     seedAccountProfileQuery(queryClient, profileResult.data.profile)
   } else {
@@ -92,6 +93,24 @@ describe('NormalForm', () => {
 
     expect(screen.getByRole('heading', { level: 1 })).toBeInTheDocument()
   })
+
+  it.each([true, false])(
+    'shows Azure sign-in only when Azure is configured (%s)',
+    (azureEnabled) => {
+      const queryClient = createConsoleQueryClient()
+      queryClient.setQueryData(consoleQuery.oauth.providers.get.queryKey(), { azure: azureEnabled })
+      mockQueryResults(nonInviteQueryResult, nonInviteQueryResult)
+
+      render(<NormalForm />, {
+        queryClient,
+        systemFeatures: { enable_social_oauth_login: true },
+      })
+
+      const azureLink = screen.queryByRole('link', { name: 'login.withAzure' })
+      if (azureEnabled) expect(azureLink).toBeInTheDocument()
+      else expect(azureLink).not.toBeInTheDocument()
+    },
+  )
 
   describe('Default Redirects', () => {
     it('should send logged-in visitors without a redirect target to the console home', async () => {

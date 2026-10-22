@@ -16,6 +16,7 @@ import {
   zGetOauthPluginByProviderToolAuthorizationUrlPath,
   zGetOauthPluginByProviderToolAuthorizationUrlQuery,
   zGetOauthPluginByProviderToolAuthorizationUrlResponse,
+  zGetOauthProvidersResponse,
   zPostOauthProviderAccountBody,
   zPostOauthProviderAccountResponse,
   zPostOauthProviderAuthorizeBody,
@@ -226,10 +227,29 @@ export const provider = {
   token,
 }
 
+/**
+ * Get configured OAuth providers available for sign-in
+ */
+export const get6 = oc
+  .route({
+    description: 'Get configured OAuth providers available for sign-in',
+    inputStructure: 'detailed',
+    method: 'GET',
+    operationId: 'getOauthProviders',
+    path: '/oauth/providers',
+    tags: ['console'],
+  })
+  .output(zGetOauthProvidersResponse)
+
+export const providers = {
+  get: get6,
+}
+
 export const oauth = {
   dataSource,
   plugin,
   provider,
+  providers,
 }
 
 export const contract = {
