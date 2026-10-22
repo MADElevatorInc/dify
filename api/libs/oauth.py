@@ -326,7 +326,8 @@ class AzureOAuth(OAuth):
     def __init__(self, client_id: str, client_secret: str, redirect_uri: str, tenant_id: str = "common"):
         super().__init__(client_id, client_secret, redirect_uri)
         # 'common' admits any Entra tenant; a specific tenant id restricts sign-in to one organization.
-        authority_tenant = urllib.parse.quote(tenant_id or "common")
+        # safe="" so an operator-supplied tenant containing '/' cannot alter the authority path.
+        authority_tenant = urllib.parse.quote(tenant_id or "common", safe="")
         self._authority = f"https://login.microsoftonline.com/{authority_tenant}/oauth2/v2.0"
 
     @override
@@ -383,8 +384,13 @@ class AzureOAuth(OAuth):
     @override
     def _transform_user_info(self, raw_info: JsonObject) -> OAuthUserInfo:
         payload = AZURE_RAW_USER_INFO_ADAPTER.validate_python(raw_info)
+        email = str(payload.get("email") or "").strip()
+        if not email:
+            # Entra omits the email claim for some guest accounts; a blank email would let
+            # unrelated identities resolve to the same account via find_by_email("").
+            raise ValueError("Azure account has no email address")
         return OAuthUserInfo(
             id=str(payload["sub"]),
             name=str(payload.get("name") or ""),
-            email=str(payload.get("email") or ""),
+            email=email,
         )
