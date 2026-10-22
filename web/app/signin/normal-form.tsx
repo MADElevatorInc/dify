@@ -1,7 +1,7 @@
 import { zLicenseStatus } from '@dify/contracts/api/console/system-features/zod.gen'
 import { cn } from '@langgenius/dify-ui/cn'
 import { RiContractLine, RiDoorLockLine, RiErrorWarningFill } from '@remixicon/react'
-import { useQuery, useSuspenseQuery } from '@tanstack/react-query'
+import { queryOptions, useQuery, useSuspenseQuery } from '@tanstack/react-query'
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
@@ -70,11 +70,20 @@ function NormalForm() {
     userResp?.profile.email,
   )
   const hasSocialLogin = systemFeatures.enable_social_oauth_login
-  const { data: oauthProviders } = useQuery({
-    ...consoleQuery.oauth.providers.get.queryOptions(),
-    enabled: hasSocialLogin,
-    staleTime: Infinity,
-  })
+  const { data: oauthProviders, isPending: isProvidersPending } = useQuery(
+    queryOptions({
+      ...consoleQuery.oauth.providers.get.queryOptions(),
+      enabled: hasSocialLogin,
+      staleTime: Infinity,
+      // Surface discovery failures to the error boundary (Try Again) instead of
+      // silently hiding every social button.
+      throwOnError: true,
+    }),
+  )
+  const hasConfiguredSocialLogin =
+    hasSocialLogin &&
+    !!oauthProviders &&
+    (oauthProviders.github || oauthProviders.google || oauthProviders.azure)
   const ssoProtocol = systemFeatures.sso_enforced_for_signin_protocol
   const hasSsoLogin = systemFeatures.sso_enforced_for_signin && ssoProtocol !== null
   const hasEmailCodeLogin = systemFeatures.enable_email_code_login
@@ -87,13 +96,16 @@ function NormalForm() {
       : selectedAuthType === 'code' && hasEmailCodeLogin
         ? 'code'
         : defaultAuthType
-  const showORLine = (hasSocialLogin || hasSsoLogin) && hasEmailLogin
+  const showORLine = (hasConfiguredSocialLogin || hasSsoLogin) && hasEmailLogin
   const noLoginMethodsConfigured =
-    !hasSocialLogin && !hasEmailCodeLogin && !hasEmailPasswordLogin && !hasSsoLogin
+    !hasConfiguredSocialLogin && !hasEmailCodeLogin && !hasEmailPasswordLogin && !hasSsoLogin
   const allMethodsAreDisabled = noLoginMethodsConfigured || isInviteCheckError
   const shouldRedirectLoggedInUser = isLoggedIn && (!isInviteLink || isInvitationForCurrentAccount)
   const isLoading =
-    isCheckLoading || shouldRedirectLoggedInUser || (isInviteLink && isInviteCheckLoading)
+    isCheckLoading ||
+    shouldRedirectLoggedInUser ||
+    (isInviteLink && isInviteCheckLoading) ||
+    (hasSocialLogin && isProvidersPending)
 
   useEffect(() => {
     if (!isLoggedIn) return
@@ -212,7 +224,13 @@ function NormalForm() {
         )}
         <div className="relative">
           <div className="mt-6 flex flex-col gap-3">
-            {hasSocialLogin && <SocialAuth azureEnabled={oauthProviders?.azure ?? false} />}
+            {hasConfiguredSocialLogin && (
+              <SocialAuth
+                githubEnabled={oauthProviders?.github ?? false}
+                googleEnabled={oauthProviders?.google ?? false}
+                azureEnabled={oauthProviders?.azure ?? false}
+              />
+            )}
             {hasSsoLogin && (
               <div className="w-full">
                 <SSOAuth protocol={ssoProtocol} />

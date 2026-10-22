@@ -84,6 +84,8 @@ export type OAuthProviderTokenResponse = {
 
 export type OAuthProvidersResponse = {
   azure: boolean
+  github: boolean
+  google: boolean
 }
 
 export type GetOauthDataSourceBindingByProviderData = {

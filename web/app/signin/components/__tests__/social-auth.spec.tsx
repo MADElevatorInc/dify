@@ -32,7 +32,7 @@ describe('SocialAuth', () => {
 
   describe('OAuth params', () => {
     it('should include browser timezone and locale in oauth links', () => {
-      render(<SocialAuth azureEnabled />)
+      render(<SocialAuth githubEnabled googleEnabled azureEnabled />)
 
       expect(screen.getByRole('link', { name: 'login.withGitHub' })).toHaveAttribute(
         'href',
@@ -65,7 +65,7 @@ describe('SocialAuth', () => {
         new URLSearchParams('invite_token=invite-123') as ReturnType<typeof useSearchParams>,
       )
 
-      render(<SocialAuth azureEnabled />)
+      render(<SocialAuth githubEnabled googleEnabled azureEnabled />)
 
       const githubLink = screen.getByRole('link', { name: 'login.withGitHub' })
       expect(githubLink).toHaveAttribute('href', expect.stringContaining('invite_token=invite-123'))
@@ -81,11 +81,19 @@ describe('SocialAuth', () => {
     it('should omit timezone when browser timezone is unavailable', () => {
       mockGetBrowserTimezone.mockReturnValue(undefined)
 
-      render(<SocialAuth azureEnabled />)
+      render(<SocialAuth githubEnabled googleEnabled azureEnabled />)
 
       expect(
         screen.getByRole('link', { name: 'login.withGitHub' }).getAttribute('href'),
       ).not.toContain('timezone=')
+    })
+
+    it('should hide providers that are not configured', () => {
+      render(<SocialAuth githubEnabled={false} googleEnabled={false} azureEnabled />)
+
+      expect(screen.queryByRole('link', { name: 'login.withGitHub' })).not.toBeInTheDocument()
+      expect(screen.queryByRole('link', { name: 'login.withGoogle' })).not.toBeInTheDocument()
+      expect(screen.getByRole('link', { name: 'login.withAzure' })).toBeInTheDocument()
     })
   })
 })

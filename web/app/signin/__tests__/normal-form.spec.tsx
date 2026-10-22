@@ -98,7 +98,11 @@ describe('NormalForm', () => {
     'shows Azure sign-in only when Azure is configured (%s)',
     (azureEnabled) => {
       const queryClient = createConsoleQueryClient()
-      queryClient.setQueryData(consoleQuery.oauth.providers.get.queryKey(), { azure: azureEnabled })
+      queryClient.setQueryData(consoleQuery.oauth.providers.get.queryKey(), {
+        azure: azureEnabled,
+        github: false,
+        google: false,
+      })
       mockQueryResults(nonInviteQueryResult, nonInviteQueryResult)
 
       render(<NormalForm />, {
@@ -109,8 +113,49 @@ describe('NormalForm', () => {
       const azureLink = screen.queryByRole('link', { name: 'login.withAzure' })
       if (azureEnabled) expect(azureLink).toBeInTheDocument()
       else expect(azureLink).not.toBeInTheDocument()
+      expect(screen.queryByRole('link', { name: 'login.withGitHub' })).not.toBeInTheDocument()
+      expect(screen.queryByRole('link', { name: 'login.withGoogle' })).not.toBeInTheDocument()
     },
   )
+
+  it('shows the configuration guidance instead of an empty form when no provider is configured', () => {
+    const queryClient = createConsoleQueryClient()
+    queryClient.setQueryData(consoleQuery.oauth.providers.get.queryKey(), {
+      azure: false,
+      github: false,
+      google: false,
+    })
+    mockQueryResults(nonInviteQueryResult, nonInviteQueryResult)
+
+    render(<NormalForm />, {
+      queryClient,
+      systemFeatures: {
+        enable_social_oauth_login: true,
+        enable_email_password_login: false,
+      },
+    })
+
+    expect(screen.getByText('login.noLoginMethod')).toBeInTheDocument()
+    expect(screen.queryByRole('link', { name: 'login.withAzure' })).not.toBeInTheDocument()
+  })
+
+  it('omits the OR divider when social login is enabled but no provider is configured', () => {
+    const queryClient = createConsoleQueryClient()
+    queryClient.setQueryData(consoleQuery.oauth.providers.get.queryKey(), {
+      azure: false,
+      github: false,
+      google: false,
+    })
+    mockQueryResults(nonInviteQueryResult, nonInviteQueryResult)
+
+    render(<NormalForm />, {
+      queryClient,
+      systemFeatures: { enable_social_oauth_login: true },
+    })
+
+    expect(screen.queryByText('login.or')).not.toBeInTheDocument()
+    expect(screen.queryByRole('link', { name: 'login.withGitHub' })).not.toBeInTheDocument()
+  })
 
   describe('Default Redirects', () => {
     it('should send logged-in visitors without a redirect target to the console home', async () => {

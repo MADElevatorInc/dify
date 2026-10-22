@@ -123,19 +123,28 @@ def test_login_returns_adapter_error_for_unknown_provider(
         (None, None, False),
     ],
 )
-def test_oauth_providers_reports_azure_only_when_both_credentials_are_configured(
+def test_oauth_providers_reports_each_provider_only_when_both_credentials_are_configured(
     app: Flask,
     config_overrides: Callable[..., None],
     client_id: str | None,
     client_secret: str | None,
     expected: bool,
 ) -> None:
-    config_overrides(AZURE_CLIENT_ID=client_id, AZURE_CLIENT_SECRET=client_secret)
+    # GitHub is fully configured and Google has no credentials, so they pin the
+    # per-provider booleans while Azure varies with the parameters.
+    config_overrides(
+        AZURE_CLIENT_ID=client_id,
+        AZURE_CLIENT_SECRET=client_secret,
+        GITHUB_CLIENT_ID="github-client-id",
+        GITHUB_CLIENT_SECRET="github-client-secret",
+        GOOGLE_CLIENT_ID=None,
+        GOOGLE_CLIENT_SECRET=None,
+    )
 
     with app.test_request_context("/oauth/providers"):
         response = OAuthProviders().get()
 
-    assert response == {"azure": expected}
+    assert response == {"azure": expected, "github": True, "google": False}
 
 
 def test_oauth_admission_does_not_query_enterprise_features(

@@ -127,6 +127,8 @@ export const zOAuthProviderTokenResponse = z.object({
  */
 export const zOAuthProvidersResponse = z.object({
   azure: z.boolean(),
+  github: z.boolean(),
+  google: z.boolean(),
 })
 
 export const zGetOauthDataSourceBindingByProviderPath = z.object({
