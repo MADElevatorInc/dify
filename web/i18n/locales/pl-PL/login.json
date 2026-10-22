@@ -97,6 +97,7 @@
   "webapp.disabled": "Uwierzytelnianie aplikacji internetowej jest wyłączone. Proszę skontaktować się z administratorem systemu, aby je włączyć. Możesz spróbować użyć aplikacji bezpośrednio.",
   "webapp.login": "Zaloguj się",
   "welcome": "Witaj w Dify, zaloguj się, aby kontynuować.",
+  "withAzure": "Kontynuuj za pomocą Azure",
   "withGitHub": "Kontynuuj za pomocą GitHub",
   "withGoogle": "Kontynuuj za pomocą Google",
   "withSSO": "Kontynuuj logowanie jednokrotne"

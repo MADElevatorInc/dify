@@ -62,8 +62,12 @@ class OAuthErrorResponse(ResponseModel):
     error: str = Field(description="OAuth error message")
 
 
+class OAuthProvidersResponse(ResponseModel):
+    azure: bool = Field(description="Whether Azure OAuth is configured for sign-in")
+
+
 register_schema_models(console_ns, OAuthLoginQuery, OAuthCallbackQuery)
-register_response_schema_models(console_ns, RedirectResponse, OAuthErrorResponse)
+register_response_schema_models(console_ns, RedirectResponse, OAuthErrorResponse, OAuthProvidersResponse)
 
 
 def _validated_timezone(value: str | None) -> str | None:
@@ -140,11 +144,23 @@ def _signin_redirect(message: str, **params: str) -> Response:
     return redirect(f"{dify_config.CONSOLE_WEB_URL}/signin?{query}")
 
 
+@console_ns.route("/oauth/providers")
+class OAuthProviders(Resource):
+    @console_ns.doc("get_oauth_providers")
+    @console_ns.doc(description="Get configured OAuth providers available for sign-in")
+    @console_ns.response(200, "Success", console_ns.models[OAuthProvidersResponse.__name__])
+    def get(self):
+        return dump_response(
+            OAuthProvidersResponse,
+            {"azure": bool(dify_config.AZURE_CLIENT_ID and dify_config.AZURE_CLIENT_SECRET)},
+        )
+
+
 @console_ns.route("/oauth/login/<provider>")
 class OAuthLogin(Resource):
     @console_ns.doc("oauth_login")
     @console_ns.doc(description="Initiate OAuth login process")
-    @console_ns.doc(params={"provider": "OAuth provider name (github/google)"})
+    @console_ns.doc(params={"provider": "OAuth provider name (github/google/azure)"})
     @console_ns.doc(params=query_params_from_model(OAuthLoginQuery))
     @console_ns.response(302, "Redirect to OAuth authorization URL", console_ns.models[RedirectResponse.__name__])
     @console_ns.response(400, "Invalid provider", console_ns.models[OAuthErrorResponse.__name__])
@@ -171,7 +187,7 @@ class OAuthLogin(Resource):
 class OAuthCallback(Resource):
     @console_ns.doc("oauth_callback")
     @console_ns.doc(description="Handle OAuth callback and complete login process")
-    @console_ns.doc(params={"provider": "OAuth provider name (github/google)"})
+    @console_ns.doc(params={"provider": "OAuth provider name (github/google/azure)"})
     @console_ns.doc(params=query_params_from_model(OAuthCallbackQuery))
     @console_ns.response(302, "Redirect to console with access token", console_ns.models[RedirectResponse.__name__])
     @console_ns.response(400, "OAuth process failed", console_ns.models[OAuthErrorResponse.__name__])

@@ -97,6 +97,7 @@
   "webapp.disabled": "Web 应用身份认证已禁用，请联系系统管理员启用。您也可以尝试直接使用应用。",
   "webapp.login": "登录",
   "welcome": "👋 欢迎！请登录以开始使用。",
+  "withAzure": "使用 Azure 登录",
   "withGitHub": "使用 GitHub 登录",
   "withGoogle": "使用 Google 登录",
   "withSSO": "使用 SSO 登录"

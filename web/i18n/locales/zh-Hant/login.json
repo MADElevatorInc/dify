@@ -97,6 +97,7 @@
   "webapp.disabled": "網頁應用程序身份驗證已被禁用。請聯繫系統管理員以啟用它。您可以嘗試直接使用應用程序。",
   "webapp.login": "登入",
   "welcome": "👋 歡迎來到 Dify, 登入以繼續",
+  "withAzure": "使用 Azure 登入",
   "withGitHub": "使用 GitHub 登入",
   "withGoogle": "使用 Google 登入",
   "withSSO": "繼續使用 SSO"

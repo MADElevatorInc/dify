@@ -97,6 +97,7 @@
   "webapp.disabled": "Die Webanmeldeauthentifizierung ist deaktiviert. Bitte kontaktieren Sie den Systemadministrator, um sie zu aktivieren. Sie können versuchen, die App direkt zu verwenden.",
   "webapp.login": "Anmelden",
   "welcome": "Willkommen bei Dify, bitte melde dich an, um fortzufahren.",
+  "withAzure": "Mit Azure fortfahren",
   "withGitHub": "Mit GitHub fortfahren",
   "withGoogle": "Mit Google fortfahren",
   "withSSO": "Mit SSO fortfahren"

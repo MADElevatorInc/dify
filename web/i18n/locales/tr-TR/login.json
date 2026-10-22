@@ -97,6 +97,7 @@
   "webapp.disabled": "Web uygulaması kimlik doğrulaması devre dışı. Lütfen bu özelliği etkinleştirmesi için sistem yöneticisi ile iletişime geçin. Uygulamayı doğrudan kullanmayı deneyebilirsiniz.",
   "webapp.login": "Giriş",
   "welcome": "Dify'ye hoş geldiniz, devam etmek için lütfen giriş yapın.",
+  "withAzure": "Azure ile devam et",
   "withGitHub": "GitHub ile devam et",
   "withGoogle": "Google ile devam et",
   "withSSO": "TOA ile devam etme"

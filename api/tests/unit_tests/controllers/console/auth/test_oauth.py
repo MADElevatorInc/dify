@@ -9,7 +9,7 @@ from werkzeug.exceptions import Forbidden, UnprocessableEntity
 
 from controllers.console import wraps as console_wraps
 from controllers.console.auth import oauth as oauth_controller
-from controllers.console.auth.oauth import OAuthCallback, OAuthLogin
+from controllers.console.auth.oauth import OAuthCallback, OAuthLogin, OAuthProviders
 from enums import DeploymentEdition
 from libs.oauth import encode_oauth_state
 from services.account_errors import (
@@ -112,6 +112,30 @@ def test_login_returns_adapter_error_for_unknown_provider(
 
     assert status == 400
     assert payload == {"error": "Invalid provider"}
+
+
+@pytest.mark.parametrize(
+    ("client_id", "client_secret", "expected"),
+    [
+        ("client-id", "client-secret", True),
+        ("client-id", None, False),
+        (None, "client-secret", False),
+        (None, None, False),
+    ],
+)
+def test_oauth_providers_reports_azure_only_when_both_credentials_are_configured(
+    app: Flask,
+    config_overrides: Callable[..., None],
+    client_id: str | None,
+    client_secret: str | None,
+    expected: bool,
+) -> None:
+    config_overrides(AZURE_CLIENT_ID=client_id, AZURE_CLIENT_SECRET=client_secret)
+
+    with app.test_request_context("/oauth/providers"):
+        response = OAuthProviders().get()
+
+    assert response == {"azure": expected}
 
 
 def test_oauth_admission_does_not_query_enterprise_features(

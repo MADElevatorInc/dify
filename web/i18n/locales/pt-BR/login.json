@@ -97,6 +97,7 @@
   "webapp.disabled": "A autenticação do aplicativo da web está desativada. Por favor, entre em contato com o administrador do sistema para habilitá-la. Você pode tentar usar o aplicativo diretamente.",
   "webapp.login": "Entrar",
   "welcome": "Bem-vindo ao Dify, faça login para continuar.",
+  "withAzure": "Continuar com o Azure",
   "withGitHub": "Continuar com o GitHub",
   "withGoogle": "Continuar com o Google",
   "withSSO": "Continuar com SSO"

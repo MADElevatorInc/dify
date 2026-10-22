@@ -9,3 +9,7 @@ html[data-theme='dark'] .githubIcon {
 .googleIcon {
   background: center/contain url('./assets/google.svg') no-repeat;
 }
+
+.azureIcon {
+  background: center/contain url('./assets/azure.svg') no-repeat;
+}

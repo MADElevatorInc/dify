@@ -82,6 +82,10 @@ export type OAuthProviderTokenResponse = {
   token_type: string
 }
 
+export type OAuthProvidersResponse = {
+  azure: boolean
+}
+
 export type GetOauthDataSourceBindingByProviderData = {
   body?: never
   path: {
@@ -290,3 +294,22 @@ export type PostOauthProviderTokenResponses = {
 
 export type PostOauthProviderTokenResponse =
   PostOauthProviderTokenResponses[keyof PostOauthProviderTokenResponses]
+
+export type GetOauthProvidersData = {
+  body?: never
+  path?: never
+  query?: never
+  url: '/oauth/providers'
+}
+
+export type GetOauthProvidersErrors = {
+  default: ErrorResponse
+}
+
+export type GetOauthProvidersError = GetOauthProvidersErrors[keyof GetOauthProvidersErrors]
+
+export type GetOauthProvidersResponses = {
+  200: OAuthProvidersResponse
+}
+
+export type GetOauthProvidersResponse = GetOauthProvidersResponses[keyof GetOauthProvidersResponses]

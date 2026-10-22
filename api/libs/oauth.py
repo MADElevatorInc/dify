@@ -55,11 +55,18 @@ class GoogleRawUserInfo(TypedDict):
     email: str
 
 
+class AzureRawUserInfo(TypedDict):
+    sub: str
+    name: NotRequired[str | None]
+    email: NotRequired[str | None]
+
+
 ACCESS_TOKEN_RESPONSE_ADAPTER = TypeAdapter(AccessTokenResponse)
 OAUTH_STATE_ADAPTER = TypeAdapter(OAuthState)
 GITHUB_RAW_USER_INFO_ADAPTER = TypeAdapter(GitHubRawUserInfo)
 GITHUB_EMAIL_RECORDS_ADAPTER = TypeAdapter(list[GitHubEmailRecord])
 GOOGLE_RAW_USER_INFO_ADAPTER = TypeAdapter(GoogleRawUserInfo)
+AZURE_RAW_USER_INFO_ADAPTER = TypeAdapter(AzureRawUserInfo)
 
 
 @dataclass
@@ -308,3 +315,76 @@ class GoogleOAuth(OAuth):
     def _transform_user_info(self, raw_info: JsonObject) -> OAuthUserInfo:
         payload = GOOGLE_RAW_USER_INFO_ADAPTER.validate_python(raw_info)
         return OAuthUserInfo(id=str(payload["sub"]), name="", email=payload["email"])
+
+
+class AzureOAuth(OAuth):
+    """Microsoft Entra ID (Azure AD) sign-in via the OAuth 2.0 authorization code flow."""
+
+    _USER_INFO_URL = "https://graph.microsoft.com/oidc/userinfo"
+    _SCOPE = "openid profile email"
+
+    def __init__(self, client_id: str, client_secret: str, redirect_uri: str, tenant_id: str = "common"):
+        super().__init__(client_id, client_secret, redirect_uri)
+        # 'common' admits any Entra tenant; a specific tenant id restricts sign-in to one organization.
+        authority_tenant = urllib.parse.quote(tenant_id or "common")
+        self._authority = f"https://login.microsoftonline.com/{authority_tenant}/oauth2/v2.0"
+
+    @override
+    def get_authorization_url(
+        self,
+        invite_token: str | None = None,
+        timezone: str | None = None,
+        language: str | None = None,
+        redirect_url: str | None = None,
+    ) -> str:
+        params = {
+            "client_id": self.client_id,
+            "response_type": "code",
+            "redirect_uri": self.redirect_uri,
+            "scope": self._SCOPE,
+        }
+        state = encode_oauth_state(
+            invite_token=invite_token,
+            timezone=timezone,
+            language=language,
+            redirect_url=redirect_url,
+        )
+        if state:
+            params["state"] = state
+        return f"{self._authority}/authorize?{urllib.parse.urlencode(params)}"
+
+    @override
+    def get_access_token(self, code: str) -> str:
+        data = {
+            "client_id": self.client_id,
+            "client_secret": self.client_secret,
+            "code": code,
+            "grant_type": "authorization_code",
+            "redirect_uri": self.redirect_uri,
+        }
+        headers = {"Accept": "application/json"}
+        response = _http_client.post(f"{self._authority}/token", data=data, headers=headers)
+
+        response_json = ACCESS_TOKEN_RESPONSE_ADAPTER.validate_python(_json_object(response))
+        access_token = response_json.get("access_token")
+
+        if not access_token:
+            raise ValueError(f"Error in Azure OAuth: {response_json}")
+
+        return access_token
+
+    @override
+    def get_raw_user_info(self, token: str) -> JsonObject:
+        headers = {"Authorization": f"Bearer {token}"}
+        response = _http_client.get(self._USER_INFO_URL, headers=headers)
+        response.raise_for_status()
+        return _json_object(response)
+
+    @override
+    def _transform_user_info(self, raw_info: JsonObject) -> OAuthUserInfo:
+        payload = AZURE_RAW_USER_INFO_ADAPTER.validate_python(raw_info)
+        return OAuthUserInfo(
+            id=str(payload["sub"]),
+            name=str(payload.get("name") or ""),
+            email=str(payload.get("email") or ""),
+        )

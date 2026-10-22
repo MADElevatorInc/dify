@@ -97,6 +97,7 @@
   "webapp.disabled": "Web アプリの認証が無効になっています。システム管理者に連絡して有効にしてください。直接アプリを使用してみてください。",
   "webapp.login": "ログイン",
   "welcome": "👋 ようこそ！まずはログインしてご利用ください。",
+  "withAzure": "Azure で続行",
   "withGitHub": "GitHub で続行",
   "withGoogle": "Google で続行",
   "withSSO": "SSO を続行する"

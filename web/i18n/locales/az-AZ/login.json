@@ -97,6 +97,7 @@
   "webapp.disabled": "Veb tətbiqdə şəxsiyyətin doğrulanması deaktiv edilib. Onu aktivləşdirmək üçün sistem inzibatçısı ilə əlaqə saxlayın. Tətbiqdən birbaşa istifadə etməyə cəhd edə bilərsiniz.",
   "webapp.login": "Giriş",
   "welcome": "👋 Xoş gəlmisiniz! Başlamaq üçün daxil olun.",
+  "withAzure": "Azure ilə davam et",
   "withGitHub": "GitHub ilə davam et",
   "withGoogle": "Google ilə davam et",
   "withSSO": "SSO ilə davam et"

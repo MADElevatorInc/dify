@@ -3126,6 +3126,7 @@ export default interface Resources {
     'webapp.disabled': 'Webapp authentication is disabled. Please contact the system admin to enable it. You can try to use the app directly.'
     'webapp.login': 'Login'
     welcome: '👋 Welcome! Please log in to get started.'
+    withAzure: 'Continue with Azure'
     withGitHub: 'Continue with GitHub'
     withGoogle: 'Continue with Google'
     withSSO: 'Continue with SSO'

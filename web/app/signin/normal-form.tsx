@@ -10,7 +10,7 @@ import { userProfileQueryOptions } from '@/features/account-profile/client'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import Link from '@/next/link'
 import { useRouter, useSearchParams } from '@/next/navigation'
-import { consoleClient } from '@/service/console'
+import { consoleClient, consoleQuery } from '@/service/console'
 import { isUnauthorizedError } from '@/service/http-error'
 import { replaceLoginRedirect } from '@/utils/login-redirect.client'
 import { basePath } from '@/utils/var'
@@ -70,6 +70,11 @@ function NormalForm() {
     userResp?.profile.email,
   )
   const hasSocialLogin = systemFeatures.enable_social_oauth_login
+  const { data: oauthProviders } = useQuery({
+    ...consoleQuery.oauth.providers.get.queryOptions(),
+    enabled: hasSocialLogin,
+    staleTime: Infinity,
+  })
   const ssoProtocol = systemFeatures.sso_enforced_for_signin_protocol
   const hasSsoLogin = systemFeatures.sso_enforced_for_signin && ssoProtocol !== null
   const hasEmailCodeLogin = systemFeatures.enable_email_code_login
@@ -207,7 +212,7 @@ function NormalForm() {
         )}
         <div className="relative">
           <div className="mt-6 flex flex-col gap-3">
-            {hasSocialLogin && <SocialAuth />}
+            {hasSocialLogin && <SocialAuth azureEnabled={oauthProviders?.azure ?? false} />}
             {hasSsoLogin && (
               <div className="w-full">
                 <SSOAuth protocol={ssoProtocol} />
