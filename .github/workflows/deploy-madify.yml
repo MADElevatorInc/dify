@@ -23,8 +23,12 @@ name: Deploy Madify
 #       "Principal": { "Federated": "arn:aws:iam::ACCOUNT_ID:oidc-provider/token.actions.githubusercontent.com" },
 #       "Action": "sts:AssumeRoleWithWebIdentity",
 #       "Condition": {
-#         "StringEquals": { "token.actions.githubusercontent.com:aud": "sts.amazonaws.com" },
-#         "StringLike":   { "token.actions.githubusercontent.com:sub": "repo:MADElevatorInc/dify:*" }
+#         "StringEquals": {
+#           "token.actions.githubusercontent.com:aud": "sts.amazonaws.com",
+#           # Pin to this environment, not the whole repo (*). Requires the 'dev'
+#           # environment to restrict allowed branches to deploy/dev in GitHub settings.
+#           "token.actions.githubusercontent.com:sub": "repo:MADElevatorInc/dify:environment:dev"
+#         }
 #       }
 #     }]
 #   }
@@ -69,17 +73,25 @@ jobs:
             > /tmp/deploy.pem
           chmod 600 /tmp/deploy.pem
 
+          # Write known_hosts so StrictHostKeyChecking=yes can verify the server identity.
+          # Get the value with: ssh-keyscan <elastic-ip> and store in dify/dev/deploy-config
+          # as "ssh_known_hosts".
+          mkdir -p ~/.ssh
+          echo "$SECRET" | python3 -c "import sys,json; print(json.load(sys.stdin)['ssh_known_hosts'])" \
+            >> ~/.ssh/known_hosts
+          chmod 600 ~/.ssh/known_hosts
+
       - name: Sync docker + scripts to EC2
         run: |
           rsync -az --delete \
-            -e "ssh -i /tmp/deploy.pem -o StrictHostKeyChecking=no" \
+            -e "ssh -i /tmp/deploy.pem -o StrictHostKeyChecking=yes" \
             docker/ scripts/ \
             "${{ steps.creds.outputs.user }}@${{ steps.creds.outputs.host }}:/opt/dify/"
 
       - name: Run deploy script on EC2
         run: |
           ssh -i /tmp/deploy.pem \
-            -o StrictHostKeyChecking=no \
+            -o StrictHostKeyChecking=yes \
             "${{ steps.creds.outputs.user }}@${{ steps.creds.outputs.host }}" \
             "bash /opt/dify/scripts/ec2-deploy.sh"
 
