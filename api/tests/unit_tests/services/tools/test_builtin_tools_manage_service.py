@@ -446,6 +446,8 @@ class TestUpdateBuiltinToolProvider:
     ) -> None:
         provider = service_module.PLATFORM_EMAIL_TOOL_PROVIDER
         _persist_provider(repository_session, provider=provider, name=name)
+        # The platform row stays locked after the SMTP password is rotated or cleared.
+        monkeypatch.setattr(service_module.dify_config, "SMTP_PASSWORD", "rotated-secret")
         create_encrypter = MagicMock()
         monkeypatch.setattr(BuiltinToolManageService, "create_tool_encrypter", create_encrypter)
 
