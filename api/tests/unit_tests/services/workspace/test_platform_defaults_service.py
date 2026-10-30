@@ -23,15 +23,20 @@ def workspace(sqlite_session: Session) -> tuple[str, str]:
     return tenant.id, owner.id
 
 
-def test_super_admins_join_as_admin_once_and_banned_accounts_are_skipped(
+def test_only_active_super_admins_join_as_admin_once(
     sqlite_session: Session, workspace: tuple[str, str], monkeypatch: pytest.MonkeyPatch
 ) -> None:
     tenant_id, owner_id = workspace
     boss = Account(name="Boss", email="boss@example.com")
     banned = Account(name="Banned", email="banned@example.com", status=AccountStatus.BANNED)
-    sqlite_session.add_all([boss, banned])
+    pending = Account(name="Pending", email="pending@example.com", status=AccountStatus.PENDING)
+    sqlite_session.add_all([boss, banned, pending])
     sqlite_session.commit()
-    monkeypatch.setattr(dify_config, "SUPER_ADMIN_EMAILS", "Boss@Example.com, banned@example.com, owner@example.com")
+    monkeypatch.setattr(
+        dify_config,
+        "SUPER_ADMIN_EMAILS",
+        "Boss@Example.com, banned@example.com, pending@example.com, owner@example.com",
+    )
     members = Mock()
     members.get_role.side_effect = lambda _, account_id: TenantAccountRole.OWNER if account_id == owner_id else None
 

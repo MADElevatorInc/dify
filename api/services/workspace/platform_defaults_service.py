@@ -17,7 +17,7 @@ from core.plugin.entities.plugin import PluginCategory
 from core.plugin.entities.plugin_daemon import CredentialType, PluginInstallTaskStatus
 from core.plugin.plugin_service import PluginService
 from enums.account import TenantAccountRole
-from models.account import Account, TenantAccountJoin
+from models.account import Account, AccountStatus, TenantAccountJoin
 from models.tools import BuiltinToolProvider, MCPToolProvider
 from services.tools.builtin_tools_manage_service import (
     PLATFORM_EMAIL_CREDENTIAL_NAME as EMAIL_CREDENTIAL_NAME,
@@ -58,7 +58,8 @@ def join_super_admins(tenant_id: str, *, members: WorkspaceMemberService) -> Non
         return
     with session_factory.create_session() as session:
         accounts = session.execute(
-            select(Account.id, Account.email).where(Account.email.in_(emails), Account.status != "banned")
+            # Only accounts that completed sign-in; a pending invite must not inherit admin rights.
+            select(Account.id, Account.email).where(Account.email.in_(emails), Account.status == AccountStatus.ACTIVE)
         ).all()
     for account_id, email in accounts:
         if members.get_role(tenant_id, account_id) is not None:
