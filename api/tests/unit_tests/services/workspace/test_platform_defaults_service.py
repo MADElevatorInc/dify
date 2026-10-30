@@ -193,15 +193,18 @@ def test_platform_mcp_server_is_added_once_with_its_tools(
         "mcp_provider_to_user_provider",
         lambda provider: SimpleNamespace(id=provider.id),
     )
-    reconnect = Mock(return_value=SimpleNamespace(authed=True, tools='[{"name": "execute_sql"}]'))
+    # The first discovery fails; the next run retries it; once loaded, later runs leave the provider alone.
+    reconnect = Mock(
+        side_effect=[RuntimeError("server down"), SimpleNamespace(authed=True, tools='[{"name": "execute_sql"}]')]
+    )
     monkeypatch.setattr(service.MCPToolManageService, "reconnect_with_url", reconnect)
 
-    service.add_platform_mcp_server(tenant_id, owner_id)
-    service.add_platform_mcp_server(tenant_id, owner_id)
+    for _ in range(3):
+        service.add_platform_mcp_server(tenant_id, owner_id)
 
     providers = sqlite_session.scalars(select(MCPToolProvider).where(MCPToolProvider.tenant_id == tenant_id)).all()
     assert [(p.name, p.server_identifier, p.user_id, p.authed) for p in providers] == [
         ("Syspro-MCP", "syspro-erp", owner_id, True)
     ]
     assert providers[0].tools == '[{"name": "execute_sql"}]'
-    reconnect.assert_called_once()
+    assert reconnect.call_count == 2

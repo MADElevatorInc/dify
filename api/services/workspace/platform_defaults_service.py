@@ -4,6 +4,7 @@ Driven by SUPER_ADMIN_EMAILS, PLATFORM_EMAIL_TOOL_ENABLED and PLATFORM_MCP_SERVE
 already exists, so the Celery task may retry and the backfill command may be re-run safely.
 """
 
+import hashlib
 import logging
 from email.utils import parseaddr
 
@@ -90,13 +91,43 @@ def add_platform_mcp_server(tenant_id: str, owner_id: str) -> None:
     identifier = dify_config.PLATFORM_MCP_SERVER_IDENTIFIER
     configuration = MCPConfiguration()
     with session_factory.create_session() as session, session.begin():
-        exists = session.scalar(
-            select(MCPToolProvider.id).where(
+        existing = session.execute(
+            select(MCPToolProvider.id, MCPToolProvider.authed, MCPToolProvider.server_url_hash).where(
                 MCPToolProvider.tenant_id == tenant_id, MCPToolProvider.server_identifier == identifier
             )
-        )
-        if exists:
+        ).first()
+    if existing is not None:
+        provider_id, authed, url_hash = existing
+        # Retry tool discovery only for our own server when an earlier attempt failed; keep a member's server.
+        if authed or url_hash != hashlib.sha256(server_url.encode()).hexdigest():
             return
+    else:
+        provider_id = _create_platform_mcp_server(tenant_id, owner_id, server_url, identifier, configuration)
+        if provider_id is None:
+            return
+
+    # Best-effort, outside the transaction, like the console: the next run retries if this fails.
+    try:
+        reconnect = MCPToolManageService.reconnect_with_url(
+            server_url=server_url,
+            headers={},
+            timeout=configuration.timeout,
+            sse_read_timeout=configuration.sse_read_timeout,
+        )
+        with session_factory.create_session() as session, session.begin():
+            db_provider = MCPToolManageService(session=session).get_provider_by_id(
+                provider_id=provider_id, tenant_id=tenant_id
+            )
+            db_provider.authed = reconnect.authed
+            db_provider.tools = reconnect.tools
+    except Exception:
+        logger.warning("Failed to load platform MCP tools for tenant %s", tenant_id, exc_info=True)
+
+
+def _create_platform_mcp_server(
+    tenant_id: str, owner_id: str, server_url: str, identifier: str, configuration: MCPConfiguration
+) -> str | None:
+    with session_factory.create_session() as session, session.begin():
         try:
             provider = MCPToolManageService(session=session).create_provider(
                 tenant_id=tenant_id,
@@ -112,26 +143,9 @@ def add_platform_mcp_server(tenant_id: str, owner_id: str) -> None:
         except ValueError:
             # A member already added this server under another identifier; keep theirs.
             logger.warning("Platform MCP server not added to tenant %s", tenant_id, exc_info=True)
-            return
-
+            return None
     logger.info("Added platform MCP server %s to tenant %s", identifier, tenant_id)
-
-    # Best-effort, outside the transaction, like the console: members can refresh the tools if this fails.
-    try:
-        reconnect = MCPToolManageService.reconnect_with_url(
-            server_url=server_url,
-            headers={},
-            timeout=configuration.timeout,
-            sse_read_timeout=configuration.sse_read_timeout,
-        )
-        with session_factory.create_session() as session, session.begin():
-            db_provider = MCPToolManageService(session=session).get_provider_by_id(
-                provider_id=provider.id, tenant_id=tenant_id
-            )
-            db_provider.authed = reconnect.authed
-            db_provider.tools = reconnect.tools
-    except Exception:
-        logger.warning("Failed to load platform MCP tools for tenant %s", tenant_id, exc_info=True)
+    return provider.id
 
 
 def add_platform_email_tool(tenant_id: str, owner_id: str, *, install_task_id: str | None = None) -> str | None:
