@@ -1,11 +1,15 @@
 import secrets
 
 import click
+from sqlalchemy import select
 
 from constants.languages import languages
+from core.db.session_factory import session_factory
 from extensions.ext_application_services import application_services
 from libs.helper import email as email_validate
 from libs.password import password_pattern, valid_password
+from models.account import Tenant, TenantStatus
+from tasks.provision_platform_defaults_task import provision_platform_defaults_task
 
 
 @click.command("reset-password", help="Reset the account password.")
@@ -124,3 +128,13 @@ def create_tenant(email: str, language: str | None = None, name: str | None = No
             fg="green",
         )
     )
+
+
+@click.command("provision-platform-defaults", help="Apply super admins and platform tools to every workspace.")
+def provision_platform_defaults():
+    """Queue platform defaults for existing workspaces; new workspaces get them on creation. Safe to re-run."""
+    with session_factory.create_session() as session:
+        tenant_ids = session.scalars(select(Tenant.id).where(Tenant.status == TenantStatus.NORMAL)).all()
+    for tenant_id in tenant_ids:
+        provision_platform_defaults_task.delay(tenant_id)
+    click.echo(click.style(f"Queued platform defaults for {len(tenant_ids)} workspaces.", fg="green"))

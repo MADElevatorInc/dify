@@ -2,7 +2,7 @@
 CLI command modules extracted from `commands.py`.
 """
 
-from .account import create_tenant, reset_email, reset_password
+from .account import create_tenant, provision_platform_defaults, reset_email, reset_password
 from .data_migration import (
     data_migrate,
     export_migration_data,
@@ -94,6 +94,7 @@ __all__ = [
     "migrate_resource_whitelist_scopes_to_automatic_include",
     "migration_data_wizard",
     "old_metadata_migration",
+    "provision_platform_defaults",
     "remove_orphaned_files_on_storage",
     "reset_email",
     "reset_encrypt_key_pair",

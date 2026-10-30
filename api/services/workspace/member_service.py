@@ -313,6 +313,10 @@ class WorkspaceInvitationDelivery(Protocol):
 
     def ensure_allowed(self, workspace_id: str) -> None: ...
 
+    def ensure_can_add_account(self, inviter_email: str) -> None:
+        """Raise NoPermissionError when the inviter may not bring a new account onto the platform."""
+        ...
+
     def check_invitation_quota(self, workspace_id: str) -> None: ...
 
     def create(self, invitation: InvitationToken) -> str: ...
@@ -397,6 +401,7 @@ class WorkspaceInvitationService:
         requires_setup = False
         if account is None:
             self._members.check_permission(workspace_id, inviter_id, None, "add")
+            self._invitations.ensure_can_add_account(inviter.email)
             account = self._accounts.register(
                 email=normalized_email,
                 name=normalized_email.split("@")[0],

@@ -429,6 +429,18 @@ class TestUpdateBuiltinToolProvider:
         with pytest.raises(ValueError, match="you have not added provider"):
             BuiltinToolManageService.update_builtin_tool_provider("u", "tenant-1", "google", "missing")
 
+    def test_platform_managed_credential_cannot_be_edited(self, repository_session: Session) -> None:
+        provider = service_module.PLATFORM_EMAIL_TOOL_PROVIDER
+        _persist_provider(repository_session, provider=provider, name=service_module.PLATFORM_EMAIL_CREDENTIAL_NAME)
+        with pytest.raises(ValueError, match="managed by the platform"):
+            BuiltinToolManageService.update_builtin_tool_provider(
+                "u", "tenant-1", provider, "cred-1", credentials={"smtp_server": "evil.example.com"}
+            )
+        repository_session.expire_all()
+        assert json.loads(repository_session.get(BuiltinToolProvider, "cred-1").encrypted_credentials) == {
+            "key": "encrypted"
+        }
+
     def test_updates_persisted_credentials_and_clears_cache(
         self,
         monkeypatch: pytest.MonkeyPatch,

@@ -9,6 +9,7 @@ import pytest
 from sqlalchemy import event, select
 from sqlalchemy.orm import Session, sessionmaker
 
+from configs import dify_config
 from enums import DeploymentEdition
 from extensions.ext_redis import RedisClientWrapper
 from machinery.context import RequestContext
@@ -278,6 +279,43 @@ def test_active_member_is_reported_without_sending_invitation(
             RequestContext("request", None, owner_id, workspace_id), "member@example.com", None
         )
     account_domain.delivery.send.assert_not_called()
+
+
+def test_new_platform_accounts_need_the_inviter_to_be_allowed(
+    account_domain: AccountDomain, members: tuple[str, str, str]
+) -> None:
+    workspace_id, owner_id, _ = members
+    context = RequestContext("request", None, owner_id, workspace_id)
+    account_domain.delivery.ensure_can_add_account.side_effect = NoPermissionError("platform admins only")
+    with pytest.raises(NoPermissionError):
+        account_domain.invitations.invite(context, "new@example.com", None)
+    account_domain.delivery.ensure_can_add_account.assert_called_once_with("owner@example.com")
+    assert account_domain.repository.find_by_email("new@example.com") is None
+
+    existing = account_domain.accounts.create_account("existing@example.com", "Existing", "en-US")
+    account_domain.invitations.invite(context, existing.email, None)
+    account_domain.delivery.ensure_can_add_account.assert_called_once()
+    account_domain.delivery.send.assert_called_once()
+
+
+@pytest.mark.parametrize(
+    ("super_admins", "inviter", "allowed"),
+    [
+        ("", "anyone@example.com", True),
+        ("Boss@Example.com", "boss@example.com", True),
+        ("boss@example.com", "x@example.com", False),
+    ],
+)
+def test_super_admin_policy_for_new_platform_accounts(
+    monkeypatch: pytest.MonkeyPatch, super_admins: str, inviter: str, allowed: bool
+) -> None:
+    monkeypatch.setattr(dify_config, "SUPER_ADMIN_EMAILS", super_admins)
+    gateway = WorkspaceInvitationGateway(tokens=Mock(), redis=Mock())
+    if allowed:
+        gateway.ensure_can_add_account(inviter)
+    else:
+        with pytest.raises(NoPermissionError):
+            gateway.ensure_can_add_account(inviter)
 
 
 def test_removal_transfers_maintainers_only_in_the_target_workspace(
