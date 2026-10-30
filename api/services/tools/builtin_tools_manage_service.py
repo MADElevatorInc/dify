@@ -42,6 +42,7 @@ logger = logging.getLogger(__name__)
 
 PLATFORM_EMAIL_TOOL_PROVIDER = "langgenius/email/email"
 PLATFORM_EMAIL_CREDENTIAL_NAME = "Platform SMTP"
+_PLATFORM_CREDENTIAL_LOCKED = "this credential is managed by the platform and cannot be edited"
 
 
 class BuiltinToolManageService:
@@ -173,6 +174,13 @@ class BuiltinToolManageService:
             )
             if db_provider is None:
                 raise ValueError(f"you have not added provider {provider}")
+            stored_provider = str(ToolProviderID(db_provider.provider))
+            # The credential schema comes from `provider`; a mismatch would decrypt the row with the wrong schema.
+            if str(ToolProviderID(provider)) != stored_provider:
+                raise ValueError(f"credential {credential_id} does not belong to provider {provider}")
+            # Fail closed on the platform row itself, before any decryption; renaming it goes through here too.
+            if stored_provider == PLATFORM_EMAIL_TOOL_PROVIDER and db_provider.name == PLATFORM_EMAIL_CREDENTIAL_NAME:
+                raise ValueError(_PLATFORM_CREDENTIAL_LOCKED)
 
             try:
                 if CredentialType.of(db_provider.credential_type).is_editable() and credentials:
@@ -186,14 +194,14 @@ class BuiltinToolManageService:
 
                     original_credentials = encrypter.decrypt(db_provider.credentials)
                     # Edits keep hidden secrets while changing the server, which would send the platform password
-                    # elsewhere, so any credential holding it is read-only whatever its name.
+                    # elsewhere, so any other credential holding it is read-only too.
                     platform_password = dify_config.SMTP_PASSWORD
                     if (
-                        db_provider.provider == PLATFORM_EMAIL_TOOL_PROVIDER
+                        stored_provider == PLATFORM_EMAIL_TOOL_PROVIDER
                         and platform_password
                         and original_credentials.get("email_password") == platform_password
                     ):
-                        raise ValueError("this credential is managed by the platform and cannot be edited")
+                        raise ValueError(_PLATFORM_CREDENTIAL_LOCKED)
                     new_credentials: dict[str, Any] = {
                         key: value if value != HIDDEN_VALUE else original_credentials.get(key, UNKNOWN_VALUE)
                         for key, value in credentials.items()

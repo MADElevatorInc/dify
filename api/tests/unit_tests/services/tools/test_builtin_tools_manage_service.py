@@ -429,6 +429,32 @@ class TestUpdateBuiltinToolProvider:
         with pytest.raises(ValueError, match="you have not added provider"):
             BuiltinToolManageService.update_builtin_tool_provider("u", "tenant-1", "google", "missing")
 
+    @pytest.mark.parametrize(
+        ("name", "request_provider", "error"),
+        [
+            (service_module.PLATFORM_EMAIL_CREDENTIAL_NAME, None, "managed by the platform"),
+            ("Mine", "langgenius/google/google", "does not belong to provider"),
+        ],
+    )
+    def test_platform_row_and_provider_mismatch_are_refused_before_decrypting(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+        repository_session: Session,
+        name: str,
+        request_provider: str | None,
+        error: str,
+    ) -> None:
+        provider = service_module.PLATFORM_EMAIL_TOOL_PROVIDER
+        _persist_provider(repository_session, provider=provider, name=name)
+        create_encrypter = MagicMock()
+        monkeypatch.setattr(BuiltinToolManageService, "create_tool_encrypter", create_encrypter)
+
+        with pytest.raises(ValueError, match=error):
+            BuiltinToolManageService.update_builtin_tool_provider(
+                "u", "tenant-1", request_provider or provider, "cred-1", credentials={"smtp_server": "evil.example.com"}
+            )
+        create_encrypter.assert_not_called()
+
     @pytest.mark.parametrize(("stored_password", "locked"), [("platform-secret", True), ("own-secret", False)])
     def test_credentials_holding_the_platform_smtp_password_cannot_be_edited(
         self, monkeypatch: pytest.MonkeyPatch, repository_session: Session, stored_password: str, locked: bool
