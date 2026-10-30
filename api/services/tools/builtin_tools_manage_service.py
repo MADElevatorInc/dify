@@ -42,8 +42,6 @@ logger = logging.getLogger(__name__)
 
 PLATFORM_EMAIL_TOOL_PROVIDER = "langgenius/email/email"
 PLATFORM_EMAIL_CREDENTIAL_NAME = "Platform SMTP"
-# (provider, credential name) pairs provisioned from platform secrets; members may delete them but not edit them.
-PLATFORM_MANAGED_CREDENTIALS = frozenset({(PLATFORM_EMAIL_TOOL_PROVIDER, PLATFORM_EMAIL_CREDENTIAL_NAME)})
 
 
 class BuiltinToolManageService:
@@ -175,9 +173,6 @@ class BuiltinToolManageService:
             )
             if db_provider is None:
                 raise ValueError(f"you have not added provider {provider}")
-            # Edits keep hidden secrets while changing the server, which would send the platform password elsewhere.
-            if (db_provider.provider, db_provider.name) in PLATFORM_MANAGED_CREDENTIALS:
-                raise ValueError("this credential is managed by the platform and cannot be edited")
 
             try:
                 if CredentialType.of(db_provider.credential_type).is_editable() and credentials:
@@ -190,6 +185,15 @@ class BuiltinToolManageService:
                     )
 
                     original_credentials = encrypter.decrypt(db_provider.credentials)
+                    # Edits keep hidden secrets while changing the server, which would send the platform password
+                    # elsewhere, so any credential holding it is read-only whatever its name.
+                    platform_password = dify_config.SMTP_PASSWORD
+                    if (
+                        db_provider.provider == PLATFORM_EMAIL_TOOL_PROVIDER
+                        and platform_password
+                        and original_credentials.get("email_password") == platform_password
+                    ):
+                        raise ValueError("this credential is managed by the platform and cannot be edited")
                     new_credentials: dict[str, Any] = {
                         key: value if value != HIDDEN_VALUE else original_credentials.get(key, UNKNOWN_VALUE)
                         for key, value in credentials.items()

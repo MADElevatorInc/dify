@@ -23,32 +23,63 @@ def workspace(sqlite_session: Session) -> tuple[str, str]:
     return tenant.id, owner.id
 
 
-def test_only_active_super_admins_join_as_admin_once(
+def test_only_active_super_admins_join_or_are_promoted_to_admin(
     sqlite_session: Session, workspace: tuple[str, str], monkeypatch: pytest.MonkeyPatch
 ) -> None:
     tenant_id, owner_id = workspace
-    boss = Account(name="Boss", email="boss@example.com")
+    boss = Account(name="Boss", email="Boss@Example.com")
+    editor = Account(name="Editor", email="editor@example.com")
+    admin = Account(name="Admin", email="admin@example.com")
     banned = Account(name="Banned", email="banned@example.com", status=AccountStatus.BANNED)
     pending = Account(name="Pending", email="pending@example.com", status=AccountStatus.PENDING)
-    sqlite_session.add_all([boss, banned, pending])
+    sqlite_session.add_all([boss, editor, admin, banned, pending])
     sqlite_session.commit()
     monkeypatch.setattr(
         dify_config,
         "SUPER_ADMIN_EMAILS",
-        "Boss@Example.com, banned@example.com, pending@example.com, owner@example.com",
+        "boss@example.com, editor@example.com, admin@example.com, banned@example.com, pending@example.com, "
+        "owner@example.com",
     )
-    members = Mock()
-    members.get_role.side_effect = lambda _, account_id: TenantAccountRole.OWNER if account_id == owner_id else None
+    roles = {owner_id: TenantAccountRole.OWNER, editor.id: TenantAccountRole.EDITOR, admin.id: TenantAccountRole.ADMIN}
+    members = Mock(rbac_enabled=False)
+    members.get_role.side_effect = lambda _, account_id: roles.get(account_id)
 
     service.join_super_admins(tenant_id, members=members)
 
-    members.join_member.assert_called_once_with(
-        workspace_id=tenant_id,
-        account_id=boss.id,
-        email="boss@example.com",
-        role=TenantAccountRole.ADMIN,
-        operator_account_id=None,
-    )
+    joined = {call.kwargs["account_id"]: call.kwargs for call in members.join_member.call_args_list}
+    assert set(joined) == {boss.id, editor.id}
+    assert joined[boss.id]["email"] == "Boss@Example.com"
+    assert {kwargs["role"] for kwargs in joined.values()} == {TenantAccountRole.ADMIN}
+
+
+def test_super_admins_are_skipped_when_rbac_is_enabled(
+    workspace: tuple[str, str], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    tenant_id, _ = workspace
+    monkeypatch.setattr(dify_config, "SUPER_ADMIN_EMAILS", "owner@example.com")
+    members = Mock(rbac_enabled=True)
+
+    service.join_super_admins(tenant_id, members=members)
+
+    members.join_member.assert_not_called()
+
+
+def test_ownerless_workspace_still_gets_super_admins(sqlite_session: Session, monkeypatch: pytest.MonkeyPatch) -> None:
+    boss = Account(name="Boss", email="boss@example.com")
+    tenant = Tenant(name="Ownerless")
+    sqlite_session.add_all([boss, tenant])
+    sqlite_session.commit()
+    monkeypatch.setattr(dify_config, "SUPER_ADMIN_EMAILS", "boss@example.com")
+    monkeypatch.setattr(dify_config, "PLATFORM_MCP_SERVER_URL", "http://mcp.example.com/mcp")
+    create = Mock()
+    monkeypatch.setattr(service.MCPToolManageService, "create_provider", create)
+    members = Mock(rbac_enabled=False)
+    members.get_role.return_value = None
+
+    assert service.provision_workspace(tenant.id, members=members) is None
+
+    assert members.join_member.call_args.kwargs["account_id"] == boss.id
+    create.assert_not_called()
 
 
 def test_email_tool_uses_platform_smtp_settings(workspace: tuple[str, str], monkeypatch: pytest.MonkeyPatch) -> None:
@@ -105,12 +136,30 @@ def test_email_tool_waits_for_plugin_install_and_skips_when_configured(
     install.assert_called_once_with(tenant_id, ["langgenius/email:1@abc"])
     add.assert_not_called()
 
+    monkeypatch.setattr(
+        service.PluginService,
+        "fetch_install_task",
+        Mock(return_value=SimpleNamespace(status=service.PluginInstallTaskStatus.Success)),
+    )
+    # A member's own email credential does not stand in for the shared platform one.
     sqlite_session.add(
         BuiltinToolProvider(name="Mine", tenant_id=tenant_id, user_id=owner_id, provider=service.EMAIL_TOOL_PROVIDER)
     )
     sqlite_session.commit()
     assert service.add_platform_email_tool(tenant_id, owner_id, install_task_id="install-1") is None
-    add.assert_not_called()
+    add.assert_called_once()
+
+    sqlite_session.add(
+        BuiltinToolProvider(
+            name=service.EMAIL_CREDENTIAL_NAME,
+            tenant_id=tenant_id,
+            user_id=owner_id,
+            provider=service.EMAIL_TOOL_PROVIDER,
+        )
+    )
+    sqlite_session.commit()
+    assert service.add_platform_email_tool(tenant_id, owner_id) is None
+    add.assert_called_once()
 
 
 def test_nothing_is_provisioned_when_platform_defaults_are_off(

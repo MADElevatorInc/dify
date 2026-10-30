@@ -7,7 +7,7 @@ already exists, so the Celery task may retry and the backfill command may be re-
 import logging
 from email.utils import parseaddr
 
-from sqlalchemy import select
+from sqlalchemy import func, select
 
 from configs import dify_config
 from core.db.session_factory import session_factory
@@ -43,11 +43,12 @@ def provision_workspace(
         None when the workspace is fully provisioned, or the plugin install task id to wait for before the
         email tool credential can be saved.
     """
+    # Ownerless workspaces still get super admins; the tools need an owner to attribute them to.
+    join_super_admins(tenant_id, members=members)
     owner_id = _owner_id(tenant_id)
     if owner_id is None:
-        logger.warning("Skipping platform defaults for tenant %s: no owner", tenant_id)
+        logger.warning("Skipping platform tools for tenant %s: no owner", tenant_id)
         return None
-    join_super_admins(tenant_id, members=members)
     add_platform_mcp_server(tenant_id, owner_id)
     return add_platform_email_tool(tenant_id, owner_id, install_task_id=install_task_id)
 
@@ -56,13 +57,21 @@ def join_super_admins(tenant_id: str, *, members: WorkspaceMemberService) -> Non
     emails = dify_config.SUPER_ADMIN_EMAIL_LIST
     if not emails:
         return
+    if members.rbac_enabled:
+        # shortcut: RBAC roles live in the enterprise backend and need an authorized actor to assign;
+        # super admins only manage local roles, so support RBAC when it is enabled here.
+        logger.warning("Skipping super admins for tenant %s: not supported with RBAC enabled", tenant_id)
+        return
     with session_factory.create_session() as session:
         accounts = session.execute(
             # Only accounts that completed sign-in; a pending invite must not inherit admin rights.
-            select(Account.id, Account.email).where(Account.email.in_(emails), Account.status == AccountStatus.ACTIVE)
+            select(Account.id, Account.email).where(
+                func.lower(Account.email).in_(emails), Account.status == AccountStatus.ACTIVE
+            )
         ).all()
     for account_id, email in accounts:
-        if members.get_role(tenant_id, account_id) is not None:
+        # Keep owners and admins; promote anyone with a narrower role.
+        if members.get_role(tenant_id, account_id) in (TenantAccountRole.OWNER, TenantAccountRole.ADMIN):
             continue
         members.join_member(
             workspace_id=tenant_id,
@@ -130,8 +139,11 @@ def add_platform_email_tool(tenant_id: str, owner_id: str, *, install_task_id: s
         return None
     with session_factory.create_session() as session:
         exists = session.scalar(
+            # Only the shared platform credential counts; a member's own (possibly private) one is left alone.
             select(BuiltinToolProvider.id).where(
-                BuiltinToolProvider.tenant_id == tenant_id, BuiltinToolProvider.provider == EMAIL_TOOL_PROVIDER
+                BuiltinToolProvider.tenant_id == tenant_id,
+                BuiltinToolProvider.provider == EMAIL_TOOL_PROVIDER,
+                BuiltinToolProvider.name == EMAIL_CREDENTIAL_NAME,
             )
         )
     if exists:

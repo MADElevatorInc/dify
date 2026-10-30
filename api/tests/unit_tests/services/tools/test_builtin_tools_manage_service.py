@@ -429,17 +429,37 @@ class TestUpdateBuiltinToolProvider:
         with pytest.raises(ValueError, match="you have not added provider"):
             BuiltinToolManageService.update_builtin_tool_provider("u", "tenant-1", "google", "missing")
 
-    def test_platform_managed_credential_cannot_be_edited(self, repository_session: Session) -> None:
+    @pytest.mark.parametrize(("stored_password", "locked"), [("platform-secret", True), ("own-secret", False)])
+    def test_credentials_holding_the_platform_smtp_password_cannot_be_edited(
+        self, monkeypatch: pytest.MonkeyPatch, repository_session: Session, stored_password: str, locked: bool
+    ) -> None:
         provider = service_module.PLATFORM_EMAIL_TOOL_PROVIDER
-        _persist_provider(repository_session, provider=provider, name=service_module.PLATFORM_EMAIL_CREDENTIAL_NAME)
-        with pytest.raises(ValueError, match="managed by the platform"):
+        _persist_provider(repository_session, provider=provider, name="Renamed")
+        monkeypatch.setattr(service_module.dify_config, "SMTP_PASSWORD", "platform-secret")
+        controller = MagicMock(need_credentials=True)
+        monkeypatch.setattr(service_module.ToolManager, "get_builtin_provider", MagicMock(return_value=controller))
+        encrypter = MagicMock()
+        encrypter.decrypt.return_value = {"email_password": stored_password}
+        encrypter.encrypt.return_value = {"key": "new"}
+        monkeypatch.setattr(
+            BuiltinToolManageService, "create_tool_encrypter", MagicMock(return_value=(encrypter, MagicMock()))
+        )
+
+        def update() -> None:
             BuiltinToolManageService.update_builtin_tool_provider(
                 "u", "tenant-1", provider, "cred-1", credentials={"smtp_server": "evil.example.com"}
             )
+
+        if locked:
+            with pytest.raises(ValueError, match="managed by the platform"):
+                update()
+            controller.validate_credentials.assert_not_called()
+        else:
+            update()
+            controller.validate_credentials.assert_called_once()
         repository_session.expire_all()
-        assert json.loads(repository_session.get(BuiltinToolProvider, "cred-1").encrypted_credentials) == {
-            "key": "encrypted"
-        }
+        stored = json.loads(repository_session.get(BuiltinToolProvider, "cred-1").encrypted_credentials)
+        assert stored == ({"key": "encrypted"} if locked else {"key": "new"})
 
     def test_updates_persisted_credentials_and_clears_cache(
         self,
