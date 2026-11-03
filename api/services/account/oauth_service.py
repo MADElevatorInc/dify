@@ -236,7 +236,10 @@ class AccountOAuthService:
                 raise AccountEmailDomainSuspendedError
             if freeze_type:
                 raise AccountEmailFrozenError
-            raise OAuthRegistrationError("Invalid email or password")
+            # The provider already verified who this is, so name the email an admin has to invite.
+            raise OAuthRegistrationError(
+                f"{normalized_email} has not been invited yet. Ask an admin to invite this email address."
+            )
 
         language = command.language or command.browser_language
         if language not in self._supported_languages:
