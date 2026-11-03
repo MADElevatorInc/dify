@@ -1406,6 +1406,36 @@ class WorkspaceConfig(BaseSettings):
         default=72,
     )
 
+    SUPER_ADMIN_EMAILS: str = Field(
+        description="Comma-separated account emails that join every workspace as admin and are the only "
+        "members allowed to invite people who do not have an account yet",
+        default="",
+    )
+
+    PLATFORM_EMAIL_TOOL_ENABLED: bool = Field(
+        description="Install the langgenius/email tool in every workspace, configured from the SMTP_* mail settings",
+        default=False,
+    )
+
+    PLATFORM_MCP_SERVER_URL: str = Field(
+        description="MCP server added to every workspace; empty disables it",
+        default="",
+    )
+
+    PLATFORM_MCP_SERVER_NAME: str = Field(
+        description="Display name of the platform MCP server in each workspace",
+        default="Platform MCP",
+    )
+
+    PLATFORM_MCP_SERVER_IDENTIFIER: str = Field(
+        description="Server identifier of the platform MCP server in each workspace",
+        default="platform-mcp",
+    )
+
+    @property
+    def SUPER_ADMIN_EMAIL_LIST(self) -> list[str]:
+        return [item.strip().lower() for item in self.SUPER_ADMIN_EMAILS.split(",") if item.strip()]
+
 
 class IndexingConfig(BaseSettings):
     """

@@ -186,6 +186,11 @@ class WorkspaceInvitationGateway:
         except Forbidden as error:
             raise NoPermissionError(error.description) from error
 
+    def ensure_can_add_account(self, inviter_email: str) -> None:
+        super_admins = dify_config.SUPER_ADMIN_EMAIL_LIST
+        if super_admins and inviter_email.lower() not in super_admins:
+            raise NoPermissionError("Only a platform admin can invite people who are not on this platform yet.")
+
     def create(self, invitation: InvitationToken) -> str:
         return self._tokens.create(invitation)
 

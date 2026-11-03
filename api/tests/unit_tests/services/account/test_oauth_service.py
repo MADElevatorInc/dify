@@ -687,6 +687,18 @@ def test_disabled_registration_applies_account_policy(
     assert harness.registration.registrations == []
 
 
+def test_uninvited_identity_is_told_which_email_to_invite() -> None:
+    harness = _harness()
+    harness.policy.registration_allowed = False
+
+    with pytest.raises(OAuthRegistrationError) as error:
+        harness.service.complete_authorization(_command())
+
+    assert error.value.description == (
+        "user@example.com has not been invited yet. Ask an admin to invite this email address."
+    )
+
+
 def test_pending_account_is_activated_through_repository() -> None:
     harness = _harness()
     _bind_identity(harness, _account(status="pending"))

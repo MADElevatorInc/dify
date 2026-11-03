@@ -180,6 +180,7 @@ def init_app(app: DifyApp) -> Celery:
         "tasks.rag_pipeline.priority_rag_pipeline_run_task",  # priority RAG pipeline execution
         "tasks.initialize_created_app_rbac_access_task",  # app access initialization
         "tasks.install_default_plugins_task",  # tenant default plugin installation
+        "tasks.provision_platform_defaults_task",  # tenant platform defaults (super admins, tools)
         "tasks.refresh_billing_vector_space_task",  # billing vector-space cache refresh
         "tasks.workflow_run_archive_download_tasks",  # workflow-run archive download preparation
         "tasks.workflow_run_archive_deletion_tasks",  # permanent monthly archive deletion
